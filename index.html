@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Manutenção do carro</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#2C2C2A" />
+<style>
+  :root {
+    --bg: #F5F3EE;
+    --card: #FFFFFF;
+    --border: #E3E1D8;
+    --text: #24231F;
+    --text-secondary: #6B6A62;
+    --text-muted: #9B9A90;
+    --amber-50: #FAEEDA;
+    --amber-600: #854F0B;
+    --amber-800: #633806;
+    --green-50: #EAF3DE;
+    --green-600: #3B6D11;
+    --green-800: #27500A;
+    --red-50: #FCEBEB;
+    --red-600: #A32D2D;
+    --red-800: #791F1F;
+    --accent: #D85A30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 3rem;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom)); }
+  h1 { font-size: 20px; font-weight: 600; margin: 0.25rem 0 0.15rem; }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin: 0 0 1.25rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 1rem; }
+  label { font-size: 12.5px; color: var(--text-secondary); display: block; margin-bottom: 5px; }
+  input {
+    width: 100%; font-size: 16px; padding: 9px 10px; border-radius: 9px;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    font-size: 14.5px; padding: 10px 14px; border-radius: 9px; border: 1px solid var(--border);
+    background: #fff; color: var(--text); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 10px; cursor: pointer;
+  }
+  .item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .item-name { font-size: 15px; font-weight: 500; }
+  .item-notes { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .del { border: none; background: none; color: var(--text-muted); font-size: 12.5px; padding: 2px 4px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 10px; border-radius: 20px; margin-top: 8px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .lvl-ok { background: var(--green-50); color: var(--green-800); } .lvl-ok .dot { background: var(--green-600); }
+  .lvl-soon { background: var(--amber-50); color: var(--amber-800); } .lvl-soon .dot { background: var(--amber-600); }
+  .lvl-due { background: var(--red-50); color: var(--red-800); } .lvl-due .dot { background: var(--red-600); }
+  .empty { text-align: center; color: var(--text-muted); font-size: 14px; padding: 24px 0; }
+  .banner {
+    background: var(--red-50); color: var(--red-800); border-radius: 12px; padding: 12px 14px;
+    font-size: 13.5px; margin-bottom: 1rem; display: none;
+  }
+  .banner.show { display: block; }
+  .notif-btn { font-size: 12.5px; color: var(--text-secondary); background: none; border: none; text-decoration: underline; padding: 0; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Manutenção do carro</h1>
+  <p class="subtitle">Acompanhe trocas e revisões por data ou por km rodado.</p>
+
+  <div id="banner" class="banner"></div>
+
+  <div class="card">
+    <label for="odo">Km atual do carro</label>
+    <input id="odo" type="number" inputmode="numeric" placeholder="ex: 38500" />
+    <button id="notifBtn" class="notif-btn" type="button">ativar notificações ao abrir o app</button>
+  </div>
+
+  <div id="list"></div>
+
+  <button id="addBtn" class="primary" style="width:100%;" type="button">+ adicionar item de manutenção</button>
+
+  <div id="form" class="card" style="display:none; margin-top: 1rem;">
+    <div style="font-size:15px; font-weight:600; margin-bottom:10px;" id="formTitle">novo item</div>
+    <label for="fName">Nome</label>
+    <input id="fName" type="text" placeholder="ex: trocar correia dentada" style="margin-bottom:10px;" />
+    <div class="row" style="margin-bottom:10px;">
+      <div>
+        <label for="fDate">Data alvo</label>
+        <input id="fDate" type="date" />
+      </div>
+      <div>
+        <label for="fKm">Km alvo</label>
+        <input id="fKm" type="number" inputmode="numeric" placeholder="ex: 40000" />
+      </div>
+    </div>
+    <label for="fNotes">Notas (opcional)</label>
+    <input id="fNotes" type="text" placeholder="ex: levar na oficina do Zé" style="margin-bottom:12px;" />
+    <div class="row">
+      <button id="saveBtn" class="primary" type="button">salvar</button>
+      <button id="cancelBtn" type="button">cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEMS_KEY = 'car-maintenance-items';
+const ODO_KEY = 'car-current-odometer';
+
+let items = JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]');
+let odo = localStorage.getItem(ODO_KEY) || '';
+let editingId = null;
+
+const odoInput = document.getElementById('odo');
+const listEl = document.getElementById('list');
+const formEl = document.getElementById('form');
+const bannerEl = document.getElementById('banner');
+odoInput.value = odo;
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function daysBetween(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(dateStr + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((target - today) / 86400000);
+}
+
+function formatKm(n) { return new Intl.NumberFormat('pt-BR').format(Math.round(n)); }
+
+function urgency(item, currentKm) {
+  const parts = [];
+  let score = Infinity;
+  if (item.targetDate) {
+    const d = daysBetween(item.targetDate);
+    parts.push(d <= 0 ? `venceu há ${Math.abs(d)}d` : `em ${d}d`);
+    score = Math.min(score, d);
+  }
+  if (item.targetKm && currentKm) {
+    const kmLeft = item.targetKm - currentKm;
+    parts.push(kmLeft <= 0 ? `passou ${formatKm(Math.abs(kmLeft))} km` : `faltam ${formatKm(kmLeft)} km`);
+    score = Math.min(score, kmLeft / 40);
+  }
+  let level = 'ok';
+  if (score <= 0) level = 'due';
+  else if (score <= 30) level = 'soon';
+  return { level, label: parts.join(' · ') || 'sem data/km definidos', score };
+}
+
+function save() {
+  localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+}
+
+function render() {
+  const currentKm = odo ? Number(odo) : null;
+  const sorted = [...items].sort((a,b) => urgency(a, currentKm).score - urgency(b, currentKm).score);
+
+  if (sorted.length === 0) {
+    listEl.innerHTML = '<div class="empty">Nenhum item cadastrado ainda.</div>';
+    return;
+  }
+
+  listEl.innerHTML = sorted.map(item => {
+    const u = urgency(item, currentKm);
+    return `
+      <div class="item" data-id="${item.id}">
+        <div class="item-top">
+          <div>
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
+          </div>
+          <button class="del" data-del="${item.id}">excluir</button>
+        </div>
+        <div class="badge lvl-${u.level}"><span class="dot"></span>${u.label}</div>
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.dataset.del) return;
+      openEdit(el.dataset.id);
+    });
+  });
+  listEl.querySelectorAll('[data-del]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      items = items.filter(it => it.id !== el.dataset.del);
+      save(); render();
+    });
+  });
+
+  checkNotifications(currentKm);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function checkNotifications(currentKm) {
+  const dueOrSoon = items.filter(it => ['due','soon'].includes(urgency(it, currentKm).level));
+  if (dueOrSoon.length === 0) {
+    bannerEl.classList.remove('show');
+    return;
+  }
+  const names = dueOrSoon.map(it => it.name).join(', ');
+  bannerEl.textContent = `Atenção: ${names}`;
+  bannerEl.classList.add('show');
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    if (sessionStorage.getItem('notified') !== 'yes') {
+      new Notification('Manutenção do carro', { body: `Pendente: ${names}`, icon: 'icon-192.png' });
+      sessionStorage.setItem('notified', 'yes');
+    }
+  }
+}
+
+odoInput.addEventListener('input', () => {
+  odo = odoInput.value;
+  localStorage.setItem(ODO_KEY, odo);
+  render();
+});
+
+document.getElementById('addBtn').addEventListener('click', () => openForm());
+document.getElementById('cancelBtn').addEventListener('click', () => formEl.style.display = 'none');
+document.getElementById('saveBtn').addEventListener('click', saveForm);
+
+document.getElementById('notifBtn').addEventListener('click', async () => {
+  if (!('Notification' in window)) { alert('Notificações não são suportadas neste navegador.'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    document.getElementById('notifBtn').textContent = 'notificações ativadas ✓';
+  }
+});
+
+function openForm() {
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'novo item';
+  document.getElementById('fName').value = '';
+  document.getElementById('fDate').value = '';
+  document.getElementById('fKm').value = '';
+  document.getElementById('fNotes').value = '';
+  formEl.style.display = 'block';
+  formEl.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openEdit(id) {
+  const item = items.find(it => it.id === id);
+  if (!item) return;
+  editingId = id;
+  document.getElementById('formTitle').textContent = 'editar item';
+  document.getElementById('fName').value = item.name;
+  document.getElementById('fDate').value = item.targetDate || '';
+  document.getElementById('fKm').value = item.targetKm || '';
+  document.getElementById('fNotes').value = item.notes || '';
+  formEl.style.display = 'block';
+  formEl.scrollIntoView({ behavior: 'smooth' });
+}
+
+function saveForm() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) return;
+  const targetDate = document.getElementById('fDate').value || null;
+  const targetKmRaw = document.getElementById('fKm').value;
+  const targetKm = targetKmRaw ? Number(targetKmRaw) : null;
+  const notes = document.getElementById('fNotes').value.trim();
+
+  if (editingId) {
+    items = items.map(it => it.id === editingId ? { ...it, name, targetDate, targetKm, notes } : it);
+  } else {
+    items.push({ id: uid(), name, targetDate, targetKm, notes });
+  }
+  save();
+  formEl.style.display = 'none';
+  render();
+}
+
+// register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+render();
+</script>
+</body>
+</html>
