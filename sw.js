@@ -1,4 +1,4 @@
-const CACHE_NAME = 'car-maintenance-v1';
+const CACHE_NAME = 'car-maintenance-v2';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -11,7 +11,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k.startsWith("car-maintenance-") && k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();

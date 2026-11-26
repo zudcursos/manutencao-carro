@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Manutenção do carro</title>
+<title>Táxi em Dia</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="theme-color" content="#2C2C2A" />
+<meta name="theme-color" content="#FFCA28" />
 <style>
   :root {
     --bg: #F5F3EE;
@@ -26,7 +26,7 @@
     --red-50: #FCEBEB;
     --red-600: #A32D2D;
     --red-800: #791F1F;
-    --accent: #D85A30;
+    --accent: #FFCA28;
   }
   * { box-sizing: border-box; }
   body {
@@ -50,7 +50,7 @@
     font-size: 14.5px; padding: 10px 14px; border-radius: 9px; border: 1px solid var(--border);
     background: #fff; color: var(--text); cursor: pointer;
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #222; font-weight: 700; }
   .row { display: flex; gap: 10px; }
   .row > * { flex: 1; }
   .item {
@@ -73,12 +73,14 @@
   }
   .banner.show { display: block; }
   .notif-btn { font-size: 12.5px; color: var(--text-secondary); background: none; border: none; text-decoration: underline; padding: 0; margin-top: 10px; }
+
+body{background:#f5f5f5}.wrap{padding-top:0}.hero{background:#ffca28;margin:0 -1rem 18px;padding:24px 20px 18px;border-radius:0 0 24px 24px}.hero h1{font-size:27px}.hero .subtitle{margin:4px 0;color:#333}.hero img{float:right;width:64px}.card,.item{border-color:#e5e5e5;box-shadow:0 2px 8px #00000008}.item-name{font-size:17px;font-weight:700}button{min-height:44px}input{min-height:46px}#odo{font-size:24px;font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px}.stats button{padding:12px 4px;font-size:12px;border:2px solid transparent}.stats button[aria-pressed=true]{border-color:#333}.stats strong{display:block;font-size:25px}.stats .ok{background:#e5f4e9;color:#176333}.stats .soon{background:#fff0bd;color:#795400}.stats .due{background:#fce5e5;color:#a32222}.targets{font-size:13px;margin-top:9px;color:#555}.del{min-height:44px;color:#555}details{margin-top:20px}summary{cursor:pointer;padding:12px 0}#addBtn{margin-bottom:16px;font-size:16px}h2{font-size:18px}.muted{font-size:13px;color:#555} .actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1} 
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Manutenção do carro</h1>
-  <p class="subtitle">Acompanhe trocas e revisões por data ou por km rodado.</p>
+  <header class="hero"><img src="icon-192.png" alt="Táxi amarelo"><h1>Táxi em Dia</h1>
+  <p class="subtitle">Acompanhe trocas e revisões por data ou por km rodado.</p></header>
 
   <div id="banner" class="banner"></div>
 
@@ -88,9 +90,9 @@
     <button id="notifBtn" class="notif-btn" type="button">ativar notificações ao abrir o app</button>
   </div>
 
-  <div id="list"></div>
+  <div class="stats" aria-label="Filtrar manutenções"><button class="ok" data-filter="ok"><strong id="count-ok">0</strong>Em dia</button><button class="soon" data-filter="soon"><strong id="count-soon">0</strong>Atenção</button><button class="due" data-filter="due"><strong id="count-due">0</strong>Vencidas</button></div>
 
-  <button id="addBtn" class="primary" style="width:100%;" type="button">+ adicionar item de manutenção</button>
+  <button id="addBtn" class="primary" style="width:100%;" type="button">+ Nova manutenção</button>
 
   <div id="form" class="card" style="display:none; margin-top: 1rem;">
     <div style="font-size:15px; font-weight:600; margin-bottom:10px;" id="formTitle">novo item</div>
@@ -113,8 +115,10 @@
       <button id="cancelBtn" type="button">cancelar</button>
     </div>
   </div>
+  <h2>Minhas manutenções <button id="allBtn" type="button">Ver todas</button></h2><div id="list"></div>
+  <details class="card"><summary>Histórico de serviços</summary><div id="history"></div></details>
+  <details class="card"><summary>Configurações e backup</summary><p class="muted">Os dados ficam neste dispositivo. Exporte uma cópia antes de trocar de celular.</p><div class="actions"><button id="exportBtn">Exportar backup</button><button id="importBtn">Restaurar backup</button></div><input type="file" id="backupFile" accept=".json,application/json" hidden><p class="muted">Versão 2.0 • Sem login</p></details>
 </div>
-
 <script>
 const ITEMS_KEY = 'car-maintenance-items';
 const ODO_KEY = 'car-current-odometer';
@@ -122,6 +126,9 @@ const ODO_KEY = 'car-current-odometer';
 let items = JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]');
 let odo = localStorage.getItem(ODO_KEY) || '';
 let editingId = null;
+let filter = 'all';
+const HISTORY_KEY = 'car-maintenance-history-v2';
+let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
 const odoInput = document.getElementById('odo');
 const listEl = document.getElementById('list');
@@ -165,24 +172,30 @@ function save() {
 
 function render() {
   const currentKm = odo ? Number(odo) : null;
-  const sorted = [...items].sort((a,b) => urgency(a, currentKm).score - urgency(b, currentKm).score);
+  for (const level of ['ok','soon','due']) document.getElementById('count-'+level).textContent = items.filter(it=>urgency(it,currentKm).level===level).length;
+  document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter===filter)));
+  document.getElementById('history').innerHTML = history.length ? history.slice().reverse().map(h=>`<p><strong>${escapeHtml(h.name)}</strong><br>${escapeHtml(h.date)} · ${h.km===null?'km não informado':formatKm(h.km)+' km'}${h.cost===null?'':' · '+Number(h.cost).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>`).join('') : '<p class="muted">Nenhum serviço concluído registrado.</p>';
+  checkNotifications(currentKm);
+  const sorted = items.filter(it=>filter==='all'||urgency(it,currentKm).level===filter).sort((a,b) => urgency(a, currentKm).score - urgency(b, currentKm).score);
 
   if (sorted.length === 0) {
-    listEl.innerHTML = '<div class="empty">Nenhum item cadastrado ainda.</div>';
+    listEl.innerHTML = '<div class="empty">Nenhum item nesta visualização.</div>';
     return;
   }
 
   listEl.innerHTML = sorted.map(item => {
     const u = urgency(item, currentKm);
     return `
-      <div class="item" data-id="${item.id}">
+      <div class="item" data-id="${escapeHtml(item.id).replace(/"/g,'&quot;')}">
         <div class="item-top">
           <div>
             <div class="item-name">${escapeHtml(item.name)}</div>
             ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
           </div>
-          <button class="del" data-del="${item.id}">excluir</button>
+          <button class="del" data-del="${escapeHtml(item.id).replace(/"/g,'&quot;')}">excluir</button>
         </div>
+        <div class="targets">${item.targetDate?'Data alvo: '+escapeHtml(item.targetDate.split('-').reverse().join('/')):''}${item.targetKm!=null?' · Km alvo: '+formatKm(item.targetKm):''}</div>
+        <button type="button" class="done">Registrar serviço realizado</button>
         <div class="badge lvl-${u.level}"><span class="dot"></span>${u.label}</div>
       </div>
     `;
@@ -191,12 +204,14 @@ function render() {
   listEl.querySelectorAll('.item').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.dataset.del) return;
+      if(e.target.classList.contains('done')) { complete(el.dataset.id); return; }
       openEdit(el.dataset.id);
     });
   });
   listEl.querySelectorAll('[data-del]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!confirm("Excluir esta manutenção?")) return;
       items = items.filter(it => it.id !== el.dataset.del);
       save(); render();
     });
@@ -221,7 +236,7 @@ function checkNotifications(currentKm) {
 
   if ('Notification' in window && Notification.permission === 'granted') {
     if (sessionStorage.getItem('notified') !== 'yes') {
-      new Notification('Manutenção do carro', { body: `Pendente: ${names}`, icon: 'icon-192.png' });
+      try { new Notification('Táxi em Dia', { body: `Pendente: ${names}`, icon: 'icon-192.png' }); } catch(e) {}
       sessionStorage.setItem('notified', 'yes');
     }
   }
@@ -271,10 +286,11 @@ function openEdit(id) {
 
 function saveForm() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) return;
+  if (!name) { alert("Informe o nome da manutenção."); return; }
   const targetDate = document.getElementById('fDate').value || null;
   const targetKmRaw = document.getElementById('fKm').value;
   const targetKm = targetKmRaw ? Number(targetKmRaw) : null;
+  if (targetKm !== null && (!Number.isFinite(targetKm) || targetKm < 0)) { alert("Quilometragem inválida."); return; }
   const notes = document.getElementById('fNotes').value.trim();
 
   if (editingId) {
@@ -287,6 +303,20 @@ function saveForm() {
   render();
 }
 
+document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=filter===b.dataset.filter?'all':b.dataset.filter;render()});
+document.getElementById('allBtn').onclick=()=>{filter='all';render()};
+function complete(id){
+ const it=items.find(x=>x.id===id); if(!it)return;
+ const date=prompt('Data do serviço (AAAA-MM-DD)',new Date().toLocaleDateString('sv-SE')); if(!date)return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))){alert('Data inválida');return;}
+ const value=prompt('Valor pago em reais (opcional)',''); if(value===null)return;
+ const cost=value.trim()?Number(value.replace(',','.')):null;
+ if(cost!==null&&(!Number.isFinite(cost)||cost<0)){alert('Valor inválido');return;}
+ history.push({name:it.name,date,km:odo?Number(odo):null,cost});localStorage.setItem(HISTORY_KEY,JSON.stringify(history));render();openEdit(id);alert('Serviço registrado. Atualize a próxima data ou quilometragem alvo.');
+}
+document.getElementById('exportBtn').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({version:2,items,odo,history},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='taxi-em-dia-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+document.getElementById('importBtn').onclick=()=>document.getElementById('backupFile').click();
+document.getElementById('backupFile').onchange=async e=>{try{const b=JSON.parse(await e.target.files[0].text());if(!Array.isArray(b.items)||!b.items.every(x=>x&&typeof x.id==='string'&&typeof x.name==='string'&&(x.notes==null||typeof x.notes==='string')&&(x.targetDate==null||typeof x.targetDate==='string')&&(x.targetKm==null||Number.isFinite(x.targetKm)))||!['string','number'].includes(typeof b.odo)||!Number.isFinite(Number(b.odo))||Number(b.odo)<0||(b.history!==undefined&&(!Array.isArray(b.history)||!b.history.every(h=>h&&typeof h.name==='string'&&typeof h.date==='string'&&(h.km===null||Number.isFinite(h.km))&&(h.cost===null||Number.isFinite(h.cost))))))throw Error();if(!confirm('Substituir os registros atuais pelo backup? Exporte uma cópia antes de continuar.'))return;items=b.items;odo=String(b.odo);history=b.history||[];save();localStorage.setItem(ODO_KEY,odo);localStorage.setItem(HISTORY_KEY,JSON.stringify(history));odoInput.value=odo;filter='all';render();}catch(err){alert('Backup inválido ou não foi possível restaurar.')}finally{e.target.value=''}};
 // register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

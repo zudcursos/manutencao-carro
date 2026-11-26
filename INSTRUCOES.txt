@@ -1,0 +1,5 @@
+TÁXI EM DIA V2 — RASCUNHO
+Não publique antes de validar. Os cinco arquivos do aplicativo substituem os equivalentes na branch de teste. Não altere o endereço final do aplicativo. Não desinstale o PWA nem limpe os dados do navegador.
+As chaves car-maintenance-items e car-current-odometer e os campos id, name, targetDate, targetKm, notes foram preservados. Histórico usa uma chave adicional.
+Teste com registros fictícios em ambiente separado. Antes da publicação definitiva, faça backup dos dados reais (se possível, extraia as duas chaves do navegador atual). Após atualizar no mesmo endereço, confira os registros e exporte o backup pela área Configurações. A restauração substitui os dados atuais após confirmação.
+O alerta original é ao abrir o aplicativo, não push em segundo plano. A atualização do ícone instalado depende do sistema operacional.
